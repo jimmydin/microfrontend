@@ -1,27 +1,76 @@
 # Microfrontend
 
-This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 15.2.4.
+## Criação de um workspace vazio
+ng new microfrontend --create-application false
 
-## Development server
+## Adicionando aplicações Angular (Shell e Remotes)
+### Aplicação Shell
+ng generate application shell --routing=true --style=scss
 
-Run `ng serve` for a dev server. Navigate to `http://localhost:4200/`. The application will automatically reload if you change any of the source files.
+### Aplicação Remote Home
+ng generate application home --routing=true --style=scss
 
-## Code scaffolding
+### Aplicação Remote About
+ng generate application about --routing=true --style=scss
 
-Run `ng generate component component-name` to generate a new component. You can also use `ng generate directive|pipe|service|class|guard|interface|enum|module`.
+### Configuração Module Federation Shell
+ng add @angular-architects/module-federation --project shell --port 5000
 
-## Build
+### Configuração Module Federation Home
+ng add @angular-architects/module-federation --project home --port 3000
 
-Run `ng build` to build the project. The build artifacts will be stored in the `dist/` directory.
+### Configuração Module Federation About
+ng add @angular-architects/module-federation --project about --port 4000
 
-## Running unit tests
+### Adicionar configuração em Shell
+Shell App - webpack.config.js
+```
+...
+remotes: {
+  "home": "http://localhost:3000/remoteEntry.js",
+  "about": "http://localhost:4000/remoteEntry.js",
+},
+...
+```
 
-Run `ng test` to execute the unit tests via [Karma](https://karma-runner.github.io).
+### Adicionar configuração em remotes - Expondo módulo
+Home/About App - webpack.config.js
+Exemplo home:
+```
+...
+name: "home",
+filename: "remoteEntry.js",
+exposes: {
+    './Module': './projects/home/src/app/home/home.module.ts',
+},
+...
+```
 
-## Running end-to-end tests
+### Configurar Shell app routing
+```
+const routes: Routes = [
+  {
+    path: 'home',
+    loadChildren: () => import('home/Module').then((m) => m.HomeModule)
+  },{
+    path: 'about',
+    loadChildren: () => import('about/Module').then((m) => m.AboutModule)
+  },
+];
+```
 
-Run `ng e2e` to execute the end-to-end tests via a platform of your choice. To use this command, you need to first add a package that implements end-to-end testing capabilities.
+### Criar arquivo decl
+'home/Module' e 'about/Module' não existem e o tsc irá reclamar.
+Criar arquivo no shell/src/decl.d.ts com a definição:
+```
+declare module 'home/Module';
+declare module 'about/Module';
+```
 
-## Further help
+## Run
+Precisa executar todos os projetos. Para isso, foi adicionado ao package.json a opção npm run run:all
 
-To get more help on the Angular CLI use `ng help` or go check out the [Angular CLI Overview and Command Reference](https://angular.io/cli) page.
+## Anotações importantes
+A importação de módulo não pode ser Routes.forRoot. Erro de duplicidade. É necessário criar módulo dentro do remote e expô-lo.
+
+
